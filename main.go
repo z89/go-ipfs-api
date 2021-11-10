@@ -43,7 +43,7 @@ func main() {
 
 	content, err := sh.Cat(cid)
 	if err != nil {
-		panic(fmt.Errorf("fuck: %s", err))
+		panic(fmt.Errorf("failed: %s", err))
 	}
 
 	bodyBytes, err := ioutil.ReadAll(content)
@@ -53,9 +53,7 @@ func main() {
 
 	content.Close()
 
-	recoveredOriginal := ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
-
-	fmt.Printf("%s\n", recoveredOriginal)
+	fmt.Printf("%s\n", bytes.NewBuffer(bodyBytes))
 
 	// fmt.Printf("contents contain: %s\n", new)
 }
