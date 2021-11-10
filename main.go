@@ -1,21 +1,61 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
-	"strings"
 
 	shell "github.com/ipfs/go-ipfs-api"
+	files "github.com/ipfs/go-ipfs-files"
 )
+
+// get a file or directory from unixfs
+func getUnixfsNode(path string) (files.Node, error) {
+	st, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+	f, err := files.NewSerialFile(path, false, st)
+	if err != nil {
+		return nil, err
+	}
+	return f, nil
+}
 
 func main() {
 	sh := shell.NewShell("localhost:5001")
 
-	str := "hello world"
-	cid, err := sh.Add(strings.NewReader(str))
+	file, err := os.Open("./hello")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %s", err)
-		os.Exit(1)
+		panic(fmt.Errorf("failed: %s", err))
 	}
-	fmt.Printf("successfully added string: '%s' to IPFS w/ a CID of: %s\n", str, cid)
+
+	reader := bufio.NewReader(file)
+
+	cid, err := sh.Add(reader)
+	if err != nil {
+		panic(fmt.Errorf("failed: %s", err))
+	}
+
+	fmt.Printf("successfully added file: '%s' to IPFS w/ a CID of: %s\n", "./hello", cid)
+
+	content, err := sh.Cat(cid)
+	if err != nil {
+		panic(fmt.Errorf("fuck: %s", err))
+	}
+
+	bodyBytes, err := ioutil.ReadAll(content)
+	if err != nil {
+		panic(fmt.Errorf("failed: %s", err))
+	}
+
+	content.Close()
+
+	recoveredOriginal := ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+
+	fmt.Printf("%s\n", recoveredOriginal)
+
+	// fmt.Printf("contents contain: %s\n", new)
 }
