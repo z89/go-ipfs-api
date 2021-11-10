@@ -11,24 +11,40 @@ import (
 	shell "github.com/ipfs/go-ipfs-api"
 )
 
-func add(sh *shell.Shell, content *bufio.Reader) string {
-	cid, err := sh.Add(content)
-	if err != nil {
-		panic(fmt.Errorf("failed: %s", err))
-	}
-
-	fmt.Printf("successfully added file: '%s' to IPFS w/ a CID of: %s\n", "./hello", cid)
-
-	return cid
-}
-
-func get(path string) *bufio.Reader {
+func add(sh *shell.Shell, path string) string {
 	file, err := os.Open(path)
 	if err != nil {
 		panic(fmt.Errorf("failed: %s", err))
 	}
 
-	return bufio.NewReader(file)
+	cid, err := sh.Add(bufio.NewReader(file))
+	if err != nil {
+		panic(fmt.Errorf("failed: %s", err))
+	}
+
+	fmt.Printf("successfully added file: '%s' to IPFS w/ a CID of: %s\n", path, cid)
+
+	return cid
+}
+
+func addDir(sh *shell.Shell, path string) string {
+	cid, err := sh.AddDir(path)
+	if err != nil {
+		panic(fmt.Errorf("failed: %s", err))
+	}
+
+	fmt.Printf("successfully added directory: '%s' to IPFS w/ a CID of: %s\n", path, cid)
+
+	return cid
+}
+
+func ls(sh *shell.Shell, cid string) *shell.UnixLsObject {
+	dir, err := sh.FileList(cid)
+	if err != nil {
+		panic(fmt.Errorf("yeet: %s", err))
+	}
+
+	return dir
 }
 
 func read(content io.ReadCloser) []byte {
@@ -45,6 +61,8 @@ func write(path string, bytes []byte, perm fs.FileMode) {
 	if err != nil {
 		panic(fmt.Errorf("failed: %s", err))
 	}
+
+	fmt.Printf("successfully wrote file to: '%s'\n", path)
 }
 
 func cat(sh *shell.Shell, cid string) []byte {
@@ -63,19 +81,36 @@ func cat(sh *shell.Shell, cid string) []byte {
 func main() {
 	sh := shell.NewShell("localhost:5001")
 
-	path := "./data/directory/picture.png"
+	file := "./data/directory/picture.png"
+	dir := "./data/directory"
 
-	// get() - get any given content from unixfs
-	content := get(path)
+	// add() - add any given file to IPFS
+	fileCid := add(sh, file)
 
-	// add() - add any given content to IPFS via the shell API
-	cid := add(sh, content)
+	// addDir() - add any given directory to IPFS
+	dirCid := addDir(sh, dir)
 
-	// cat() - display contents of any given content via it's CID via the shell API
-	bytes := cat(sh, cid)
+	// cat() - get contents of any given file via it's CID from IPFS
+	output := cat(sh, fileCid)
 
-	fmt.Printf("%s\n", bytes)
+	fmt.Printf("\n")
 
-	// write() - write any given content to any given dir
-	write("./test.png", bytes, 0644)
+	// write() - write any given file to any given dir
+	write("./data/test.png", output, 0644)
+
+	fmt.Printf("\n")
+
+	// ls() - get contents of any given directory via it's CID from IPFS
+	dirContents := ls(sh, dirCid)
+
+	// print each Links object w/ type (*shell.UnixLsLink) from the listed directory
+	fmt.Printf("directory %s:\n", dirContents.Hash)
+	for _, v := range dirContents.Links {
+		if v.Type == "File" {
+			fmt.Printf(" - file: %s Name: %s Type: %s Size: %d bytes\n", v.Hash, v.Name, v.Type, v.Size)
+		} else if v.Type == "Directory" {
+			fmt.Printf(" - dir: %s Name: %s Type: %s Size: %d bytes\n", v.Hash, v.Name, v.Type, v.Size)
+		}
+	}
+
 }
