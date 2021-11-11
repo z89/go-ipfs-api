@@ -125,9 +125,6 @@ func main() {
 	// encrypt plaintext picture using key; nonce vars & output ciphertext; mac vars
 	ciphertext, mac := encrypt(plaintextFile, nonce, key)
 
-	// write ciphertext picture to unixfs
-	path := write("./data/cipher", ciphertext, 0644)
-
 	// add ciphertext picture to IPFS
 	ciphertextCID := add(sh, path)
 
