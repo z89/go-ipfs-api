@@ -27,6 +27,23 @@ func add(sh *shell.Shell, path string) string {
 	return cid
 }
 
+func addBytes(sh *shell.Shell, content []byte, path string) string {
+	filePath := write(path, content, 0644)
+	file, err := os.Open(filePath)
+	if err != nil {
+		panic(fmt.Errorf("failed: %s", err))
+	}
+
+	cid, err := sh.Add(bufio.NewReader(file))
+	if err != nil {
+		panic(fmt.Errorf("failed: %s", err))
+	}
+
+	fmt.Printf("successfully added file: '%s' to IPFS w/ a CID of: %s\n", path, cid)
+
+	return cid
+}
+
 // func addDir(sh *shell.Shell, path string) string {
 // 	cid, err := sh.AddDir(path)
 // 	if err != nil {
@@ -126,7 +143,7 @@ func main() {
 	ciphertext, mac := encrypt(plaintextFile, nonce, key)
 
 	// add ciphertext picture to IPFS
-	ciphertextCID := add(sh, path)
+	ciphertextCID := addBytes(sh, ciphertext, "./data/cipher")
 
 	// cat (get contents of IPFS file) ciphertext picture from IPFS
 	output := cat(sh, ciphertextCID)
