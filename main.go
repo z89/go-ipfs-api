@@ -27,25 +27,25 @@ func add(sh *shell.Shell, path string) string {
 	return cid
 }
 
-func addDir(sh *shell.Shell, path string) string {
-	cid, err := sh.AddDir(path)
-	if err != nil {
-		panic(fmt.Errorf("failed: %s", err))
-	}
+// func addDir(sh *shell.Shell, path string) string {
+// 	cid, err := sh.AddDir(path)
+// 	if err != nil {
+// 		panic(fmt.Errorf("failed: %s", err))
+// 	}
 
-	fmt.Printf("successfully added directory: '%s' to IPFS w/ a CID of: %s\n", path, cid)
+// 	fmt.Printf("successfully added directory: '%s' to IPFS w/ a CID of: %s\n", path, cid)
 
-	return cid
-}
+// 	return cid
+// }
 
-func ls(sh *shell.Shell, cid string) *shell.UnixLsObject {
-	dir, err := sh.FileList(cid)
-	if err != nil {
-		panic(fmt.Errorf("yeet: %s", err))
-	}
+// func ls(sh *shell.Shell, cid string) *shell.UnixLsObject {
+// 	dir, err := sh.FileList(cid)
+// 	if err != nil {
+// 		panic(fmt.Errorf("yeet: %s", err))
+// 	}
 
-	return dir
-}
+// 	return dir
+// }
 
 func open(path string) *bufio.Reader {
 	file, err := os.Open(path)
@@ -101,6 +101,15 @@ func encrypt(plaintext []byte, nonce []byte, key []byte) ([]byte, []byte) {
 	return ciphertext, mac
 }
 
+func decrypt(ciphertext []byte, nonce []byte, key []byte, mac []byte) []byte {
+	decrypted, authentic := monocypher.Unlock((ciphertext), nonce, key, mac)
+	if !authentic {
+		panic(fmt.Errorf("not authentic"))
+	}
+
+	return decrypted
+}
+
 func main() {
 	key := make([]byte, 32)
 	nonce := make([]byte, 24)
@@ -122,20 +131,21 @@ func main() {
 	// add ciphertext picture to IPFS
 	ciphertextCID := add(sh, path)
 
-	// get ciphertext picture from IPFS
+	// cat (get contents of IPFS file) ciphertext picture from IPFS
 	output := cat(sh, ciphertextCID)
 
 	// write ciphertext picture fetched from IPFS to new file
 	write("./data/encrypted-ipfs-pic.png", output, 0644)
 
-	// define path of newly written encrypted picture
-	encryptedPicture := "./data/encrypted-ipfs-pic.png"
+	// define path of newly written ciphertext picture
+	ciphertextPic := "./data/encrypted-ipfs-pic.png"
 
-	// decrypt
-	decryptPicture, authentic := monocypher.Unlock(read(open(encryptedPicture)), nonce, key, mac)
-	if !authentic {
-		panic(fmt.Errorf("not authentic"))
-	}
+	// read ciphertext picture from unifs (flow: path string > reader *bufio.Reader > raw []byte)
+	ciphertextPicBytes := read(open(ciphertextPic))
 
-	write("./data/decrypted-ipfs-pic.png", decryptPicture, 0644)
+	// decrypt ciphertext picture using key; nonce; mac vars & output plaintext
+	plaintextPic := decrypt(ciphertextPicBytes, nonce, key, mac)
+
+	// write decrypted plaintext picture to a new file
+	write("./data/decrypted-ipfs-pic.png", plaintextPic, 0644)
 }
