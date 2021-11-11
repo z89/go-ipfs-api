@@ -5,6 +5,7 @@ go 1.17
 require github.com/ipfs/go-ipfs-api v0.2.0
 
 require (
+	github.com/HACKERALERT/monocypher-go v0.0.0-20211027002410-c9fccdb52e9c // indirect
 	github.com/btcsuite/btcd v0.20.1-beta // indirect
 	github.com/crackcomm/go-gitignore v0.0.0-20170627025303-887ab5e44cc3 // indirect
 	github.com/gogo/protobuf v1.3.1 // indirect
