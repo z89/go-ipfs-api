@@ -1,3 +1,0 @@
-## TODO:
-1. find what data structure (like cryptree) could be used to hold chunked files added to IPFS
-1. try splitting up file recursively in 5MB chunks to encrypt and then add metadata strucutre and encrypted chunks to IPFS

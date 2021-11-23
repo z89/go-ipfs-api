@@ -72,5 +72,5 @@ func main() {
 	output := cat(sh, ciphertextCID)
 
 	// write (write a file to a unixfs)
-	write(file+"-fromIPFS", output, 0644)
+	write("fetched-"+file[2:], output, 0644)
 }
