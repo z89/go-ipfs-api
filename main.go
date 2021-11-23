@@ -3,66 +3,24 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"io/fs"
 	"io/ioutil"
 	"os"
 
-	"github.com/HACKERALERT/monocypher-go"
 	shell "github.com/ipfs/go-ipfs-api"
 )
 
-func add(sh *shell.Shell, path string) string {
-	file, err := os.Open(path)
-	if err != nil {
-		panic(fmt.Errorf("failed: %s", err))
-	}
-
+func addFile(sh *shell.Shell, file io.Reader) string {
 	cid, err := sh.Add(bufio.NewReader(file))
 	if err != nil {
 		panic(fmt.Errorf("failed: %s", err))
 	}
 
-	fmt.Printf("successfully added file: '%s' to IPFS w/ a CID of: %s\n", path, cid)
+	fmt.Printf("successfully added file to IPFS w/ a CID of: %s\n", cid)
 
 	return cid
 }
-
-func addBytes(sh *shell.Shell, content []byte, path string) string {
-	filePath := write(path, content, 0644)
-	file, err := os.Open(filePath)
-	if err != nil {
-		panic(fmt.Errorf("failed: %s", err))
-	}
-
-	cid, err := sh.Add(bufio.NewReader(file))
-	if err != nil {
-		panic(fmt.Errorf("failed: %s", err))
-	}
-
-	fmt.Printf("successfully added file: '%s' to IPFS w/ a CID of: %s\n", path, cid)
-
-	return cid
-}
-
-// func addDir(sh *shell.Shell, path string) string {
-// 	cid, err := sh.AddDir(path)
-// 	if err != nil {
-// 		panic(fmt.Errorf("failed: %s", err))
-// 	}
-
-// 	fmt.Printf("successfully added directory: '%s' to IPFS w/ a CID of: %s\n", path, cid)
-
-// 	return cid
-// }
-
-// func ls(sh *shell.Shell, cid string) *shell.UnixLsObject {
-// 	dir, err := sh.FileList(cid)
-// 	if err != nil {
-// 		panic(fmt.Errorf("yeet: %s", err))
-// 	}
-
-// 	return dir
-// }
 
 func open(path string) *bufio.Reader {
 	file, err := os.Open(path)
@@ -73,15 +31,6 @@ func open(path string) *bufio.Reader {
 	result := bufio.NewReader(file)
 
 	return result
-}
-
-func read(reader *bufio.Reader) []byte {
-	raw, err := ioutil.ReadAll(reader)
-	if err != nil {
-		panic(fmt.Errorf("failed: %s", err))
-	}
-
-	return raw
 }
 
 func write(path string, bytes []byte, perm fs.FileMode) string {
@@ -111,55 +60,17 @@ func cat(sh *shell.Shell, cid string) []byte {
 	return bytes
 }
 
-func encrypt(plaintext []byte, nonce []byte, key []byte) ([]byte, []byte) {
-	mac, ciphertext := monocypher.Lock(plaintext, nonce, key)
-
-	fmt.Printf("mac exists: %s\n", mac)
-	return ciphertext, mac
-}
-
-func decrypt(ciphertext []byte, nonce []byte, key []byte, mac []byte) []byte {
-	decrypted, authentic := monocypher.Unlock((ciphertext), nonce, key, mac)
-	if !authentic {
-		panic(fmt.Errorf("not authentic"))
-	}
-
-	return decrypted
-}
-
 func main() {
-	key := make([]byte, 32)
-	nonce := make([]byte, 24)
-
 	sh := shell.NewShell("localhost:5001")
 
-	// plaintext picture inside two nested directories
-	file := "./data/directory/picture.png"
+	file := "./hello"
 
-	// read plaintext picture from unifs (flow: path string > reader *bufio.Reader > raw []byte)
-	plaintextFile := read(open(file))
+	// add (send file to IPFS instance and return CID)
+	ciphertextCID := addFile(sh, open(file))
 
-	// encrypt plaintext picture using key; nonce vars & output ciphertext; mac vars
-	ciphertext, mac := encrypt(plaintextFile, nonce, key)
-
-	// add ciphertext picture to IPFS
-	ciphertextCID := addBytes(sh, ciphertext, "./data/cipher")
-
-	// cat (get contents of IPFS file) ciphertext picture from IPFS
+	// cat (get contents of a file via it's CID from an IPFS instance)
 	output := cat(sh, ciphertextCID)
 
-	// write ciphertext picture fetched from IPFS to new file
-	write("./data/encrypted-ipfs-pic.png", output, 0644)
-
-	// define path of newly written ciphertext picture
-	ciphertextPic := "./data/encrypted-ipfs-pic.png"
-
-	// read ciphertext picture from unifs (flow: path string > reader *bufio.Reader > raw []byte)
-	ciphertextPicBytes := read(open(ciphertextPic))
-
-	// decrypt ciphertext picture using key; nonce; mac vars & output plaintext
-	plaintextPic := decrypt(ciphertextPicBytes, nonce, key, mac)
-
-	// write decrypted plaintext picture to a new file
-	write("./data/decrypted-ipfs-pic.png", plaintextPic, 0644)
+	// write (write a file to a unixfs)
+	write(file+"-fromIPFS", output, 0644)
 }
